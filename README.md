@@ -16,4 +16,8 @@ During my college years, we focused on computer networks and data communication.
 
 ## Projects
 
-### Project 1:
+### Project 1: Basic Switch Configuration
+
+This activity guides participants in creating a basic network using Ethernet LAN cabling. They'll connect to a Cisco switch via console and remote access, configure essential settings, and verify connectivity with one switch and two hosts using Ethernet and console ports.
+
+
