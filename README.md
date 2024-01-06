@@ -18,8 +18,17 @@ During my college years, we focused on computer networks and data communication.
 
 ### Project 1: Basic Switch Configuration
 
+[Networking/activity 1/](https://github.com/HorikitaSuzuneTsundere/Networking/tree/f8b859a9324c4ec603b16c7a4c8e85fa433229b0/activity%201)
+
 This activity guides participants in creating a basic network using Ethernet LAN cabling. They'll connect to a Cisco switch via console and remote access, configure essential settings, and verify connectivity with one switch and two hosts using Ethernet and console ports.
 
 ![image](https://github.com/HorikitaSuzuneTsundere/Networking/assets/80136683/007e2203-5373-4cee-9584-56e5e2d86587)
 
-[Networking/activity 1/](https://github.com/HorikitaSuzuneTsundere/Networking/blob/f828bcaa63f093f9ed70a0d21b7872fbd7702331/activity%201/Earl%20John%20Masaga_Activity%20%231_%20Basic%20Switch%20Configuration%20Part%201.pdf)
+### Project 2: Basic Router Configuration
+
+[Networking/activity 2/](https://github.com/HorikitaSuzuneTsundere/Networking/tree/f8b859a9324c4ec603b16c7a4c8e85fa433229b0/activity%202)
+
+This activity focuses on configuring the R2 router according to the settings outlined in the Addressing Table. Participants will complete essential configurations and interface settings on the router, utilizing SSH to establish remote connections for enhanced accessibility and control.
+
+![image](https://github.com/HorikitaSuzuneTsundere/Networking/assets/80136683/e3a3abec-e7a6-4f7b-8888-96a3e3a47a85)
+
