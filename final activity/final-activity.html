@@ -1,0 +1,3238 @@
+<html><head></head><body><pre style="word-wrap: break-word; white-space: pre-wrap;">Naviation &amp; Basic Router/Switch Configuration @ DC-MLSWITCH
+----------------------------------------------------------------------------------------
+
+* Reset Cisco Router to Default Config:
+---------------------------------------
+
+erase startup-config
+reload
+
+
+
+Reset Cisco switch to Default Config:
+---------------------------------------
+delete vlan.dat
+erase startup-config
+reload
+
+
+
+* Configure @ DC-MLSWITCH
+----------------------
+
+hostname DC-MLSWITCH
+!
+enable secret cisco
+!
+line console 0
+password cisco
+login 
+exit
+!
+line vty 0 15
+password class
+login
+exit
+!
+service password-encryption
+!
+banner motd #Unauthorized Access is not allowed!#
+!
+end
+!
+!
+show running-config
+!
+!
+show startup-config
+!
+copy running-config startup-config 
+Destination filename [startup-config]? 
+Building configuration...
+[OK]
+
+
+
+Switch Port Speed, Duplex and Auto-MDIX @ DC-MLSWITCH
+-------------------------------------------------
+DC-MLSWITCH:
+
+int fa0/20
+speed 10		
+duplex full		--&gt; notice that connection fail
+
+
+int fa0/7
+duplex auto	
+speed auto
+
+
+* Change cable to cross-over @ DC-MLSWITCH
+------------------------------------------
+
+int fa0/20
+no mdix auto		--&gt; notice that connection should fail
+
+int fa0/20
+mdix auto		--&gt; notice that connection goes up
+
+*auto mdix - automatically adjust the pins of the cable 
+			  
+
+* same devices - use cross over
+*different devices - use straight through
+
+
+* Some "show" Commands:
+-----------------------
+
+
+show int fa0/20
+!
+show flash:
+!
+show version
+!
+show startup-config
+!
+show running-config
+!
+show ip int brief
+!
+show mac address-table
+!
+show arp
+!
+
+
+----------------------------------------------------------------------------------------
+CONFIGURING VLAN @ DC-MLSWITCH: -----(default vlan cannot be changed else it will be error)
+					(vlan is for isolation and logical grouping)
+					
+-------------------------------
+
+!--&gt; reset Switch to its Factory Default 
+!
+delete vlan.dat 
+erase startup-config
+reload
+!
+!
+!--&gt;  Implementing VLAN
+!
+!
+hostname DC-MLSWITCH
+!
+vlan 100   -----&gt;(vlan ID)
+name PRIVATEVLAN
+vlan 200
+name PUBLICVLAN
+exit
+!
+do show vlan
+!
+do show flash
+!
+int range fa0/10 - 12 , fa0/15 , fa0/22
+switchport mode access
+switchport access vlan 100
+exit
+!
+int fa0/20
+switchport mode access
+switchport access vlan 200
+exit
+!
+do show vlan
+!
+-----------------------
+creating then deleting vlan 1000
+-----------------------
+int range fa0/6, fa0/14
+switch access vlan 1000
+
+vlan 1000
+name TESTvlan
+do show vlan
+exit
+
+int range fa0/6, fa0/14
+switchport mode access
+switchport access vlan 1
+exit
+
+no vlan 1000
+exit
+
+do show vlan
+
+
+
+
+----------------------------------------------------------------------------------------
+CONFIGURE TRUNKS BETWEEN SW1, SW2, and SW3:   (trunks will allow traffic from different vlan to pass in and out----switch to switch port is a trunk, coz switches support different vlan)
+-------&gt;(vlan ports are layer 2 and use only for switching and cannot assign ip)
+-------------------------------------------
+
+* Create trunk dynamically (DTP) between SW1 (desirable) &amp; SW2 (auto)
+---------------------------------------------------------------------
+
+erase start config
+delete vlan.dat
+reload
+
+SW1: 
+----
+
+do show int fa0/21 switchport
+!
+do show int trunk
+!
+hostname SW1
+!
+int fa0/21
+switchport mode dynamic desirable
+exit
+!
+
+do show int fa0/21 switchport
+!
+do show int trunk
+
+SW2:
+----
+
+hostname SW2
+exit
+show interface trunk		--&gt; notice that trunk is establish
+
+* Create trunk dynamically between SW1 (desirable) &amp; SW3 (desirable) ----&gt;(it will not be trunk if both switches DTP are on auto mode, one or both should be desirable    )
+--------------------------------------------------------------------
+
+SW1:
+----
+
+int fa0/1
+shutdown
+switchport mode dynamic desirable
+
+SW3:
+----
+
+hostname SW3
+!
+int fa0/1
+switchport mode dynamic desirable
+
+
+SW1:
+----
+
+int fa0/1
+no shutdown
+end
+!
+show interface trunk		--&gt; notice that trunk is establish
+
+
+* Create trunk manually between SW2 (disable DTP &amp; configure trunk on ) &amp; SW3 (on)
+----------------------------------------------------------------------------------
+
+SW3:
+---
+
+int fa0/11
+shutdown
+switchport mode trunk
+switchport nonegotiate
+
+
+show interface fa0/11 switchport	--&gt;  notice that DTP is OFF
+
+SW2:
+----
+
+hostname SW2
+!
+int fa0/11
+switchport mode trunk
+switchport nonegotiate
+end
+
+
+SW3:
+
+int fa0/11
+no shutdown		
+end
+
+show interface trunk		--&gt; notice that trunk is established
+
+
+----------------------------------------------------------------------------------------
+Implementing VLAN with VTP in MultiSwitch Environment:
+------------------------------------------------------
+VTP Domain Name	: itcdomain.local
+VTP mode	: SW1(Server) SW2 (Transparent) &amp; SW3 (Client)
+VTP version 	: 2
+VTP password	: vtppass
+
+* Disconnect link between SW1(VTP Server) &amp; SW3 (VTP Client)
+
+* Configure VTP Domain &amp; VTP Version 2 @ SW1
+--------------------------------------------
+
+SW1:
+---
+
+int fa0/1
+shutdown
+!
+!
+do show vtp status		--&gt;  note of the default VTP domain &amp; version
+!
+vtp domain itcdomain.local
+vtp version 2
+vtp password vtppass
+!
+do show vtp status		--&gt;  note the VTP domain name &amp; version
+
+SW2#show vtp status			--&gt;  note the VTP domain name &amp; version
+
+SW3#show vtp status			--&gt;  note that NO VTP status changes
+
+* Configure VTP Domain &amp; VTP Version 2 @ SW3
+--------------------------------------------
+
+vtp domain itcdomain.local
+vtp version 2
+vtp mode client
+vtp password vtppass
+exit
+!
+!
+show vtp status
+!
+!
+vlan 10
+
+
+* Configure VTP Transparent mode @ SW2
+--------------------------------------
+
+show vtp status			--&gt;  note the configuration revision number
+!
+vtp mode transparent
+vtp password vtppass
+!
+do show vtp status		--&gt;  note the configuration revision number changes
+
+
+
+* TEST VTP by creating VLAN 10, 20 &amp; 500 @ SW1:
+-----------------------------------------------
+
+do show vtp status		--&gt;  note the configuration revision number and VLAN number
+
+vlan 10
+name EMPLOYEEADMINVLAN
+vlan 20
+name MANAGEMENTVLAN
+vlan 500
+name GUESTVLAN
+exit
+
+do show vtp status		--&gt;  note the configuration revision number and VLAN number changes
+do show vlan			--&gt;  note the VLAN database changes	
+
+SW3:
+----
+do show vtp status		--&gt;  note the configuration revision number and VLAN number changes
+do show vlan			--&gt;  note the VLAN database changes	
+
+SW2:
+---
+do show vtp status		--&gt;  note that NO changes on configuration revision number and VLAN number 
+do show vlan			--&gt;  note that NO VLAN database changes	
+!
+!
+vlan 10
+name EMPLOYEEADMINVLAN
+vlan 20
+name MANAGEMENTVLAN
+vlan 500
+name GUESTVLAN
+exit
+
+SW3:
+----
+vlan 1000			--&gt;  notice that you cannot modify VLAN database
+
+
+----------------------------------------------
+SUMMARY of TRunking and VTP:
+----------------------------------------------
+STEP1:  Trunk:
+------
+int fa0//X
+switcnport mode trunk
+switchport nonegotiate
+
+
+STEP2 (Optional): VTP Config 
+-------
+SW1:	conf t
+	vtp domain itcdomain.local
+	vtp version 2
+	vtp mode server
+	vtp password vtppass
+
+SW2:	conf t
+	vtp domain itcdomain.local
+	vtp version 2
+	vtp mode transparent
+	vtp password 
+
+SW3:	conf t
+	vtp domain itcdomain.local
+	vtp version 2
+	vtp mode client
+	vtp password vtppass
+
+Step3:  Manual Create Vlan @ VTP Server
+------
+Step4:  Port Vlan Assignment
+------
+
+
+* Reconnect link between SW1(VTP Server) &amp; SW3 (VTP Client) on Fa0/1
+--------------------------------------------------------------------
+
+int fa0/1
+no shutdown
+
+
+* At this point Re-assign specific port membership to appropriate VLAN
+----------------------------------------------------------------------
+
+SW1:
+----
+
+do show vlan
+
+interface range fa0/7, fa0/19
+switchport mode access
+switchport access vlan 10
+exit
+!
+int range fa0/5-6 , fa0/18
+switchport mode access
+switchport access vlan 20
+exit
+!
+int range fa0/23
+switchport mode access
+switchport access vlan 500
+exit
+!
+
+do show vlan
+
+SW2:
+----
+
+do show vlan
+
+int range fa0/3 - 5
+switchport mode access
+switchport access vlan 10
+exit
+!
+int range fa0/17 , fa0/19
+switchport mode access
+switchport access vlan 500
+exit
+
+do show vlan
+
+SW3:
+----
+
+do show vlan
+
+int fa0/8
+switchport mode access
+switchport access vlan 20
+exit
+!
+int range fa0/5 , fa0/9 , fa0/19
+switchport mode access
+switchport access vlan 10
+exit
+!
+int fa0/6
+switchport mode access
+switchport access vlan 500
+exit
+!
+
+do show vlan
+
+
+
+* Assign IPv4 Address and Subnet Mask to PCs
+--------------------------------------------
+
+@ EMPLOYEE-PC1:  
+---------------
+
+ping 10.10.34.12
+
+
+* Configure SW1, SW2 &amp; SW3 with IP Address for Management
+---------------------------------------------------------
+
+SW1 Config:
+-----------
+!
+int vlan 20
+ip address 10.10.34.161 255.255.255.192
+no shutdown
+exit
+!
+do show ip interface brief
+
+SW2 Config:
+-----------
+!
+int vlan 20
+ip address 10.10.34.162 255.255.255.192
+no shutdown
+exit
+!
+do show ip interface brief
+
+SW3 Config:
+-----------
+!
+int vlan 20
+ip address 10.10.34.163 255.255.255.192
+no shutdown
+exit
+!
+do show ip interface brief
+!
+!
+ping 10.10.34.161
+!
+ping 10.10.34.162
+!
+
+
+@ ADMIN-PC1:
+------------
+
+!
+ping 10.10.34.161
+!
+ping 10.10.34.162
+!
+ping 10.10.34.163
+!
+
+
+----------------------------------------------------------------------------------------
+Basic Router Configuration:
+---------------------------
+
+* Configure COREROUTER for Basic Configuration:
+
+
+COREROUTER:
+------------
+
+hostname COREROUTER
+!
+service password-encryption
+!
+banner motd #
+++++++++++++++++++++++++++++++++++++++++++++
++++ Unauthorized Access is not Allowed!! +++
+********************************************
+ ******************************************
+  ****************************************#
+
+!
+interface vlan 1
+ip address 192.168.1.4 255.255.255.0
+description connected to CORE NETWORK
+no shutdown
+exit
+!
+int gig0/0
+ip address 10.10.34.193 255.255.255.252
+description connected to GATEWAY1
+no shutdown
+exit
+!
+int gig0/1
+ip address 10.10.34.197 255.255.255.252
+description connected to GATEWAY2
+no shutdown
+exit
+!
+int gig0/2
+ip address 192.168.2.2 255.255.255.0
+description connected to DC-MLSWITCH
+no shutdown
+exit
+!
+
+show running-config
+show ip interface brief
+show ip route
+show flash
+show version
+
+----------------------------------------------------------------------------------------
+INTER-VLAN ROUTING with a Multilayer Switch and Routers:
+--------------------------------------------------------
+
+* Configure GATEWAY1 with Subinterfacing (Router-on-a-stick) to support VLANS:
+------------------------------------------------------------------------------
+
+hostname GATEWAY1
+!
+int gig0/0
+ip address 10.10.34.194 255.255.255.252
+description connected to COREROUTER
+no shutdown
+!
+int gig0/1
+ip address 10.10.34.201 255.255.255.252
+description connected to GATEWAY2
+no shutdown
+!
+int gig0/2.10
+encapsulation dot1q 10
+ip address 10.10.34.1 255.255.255.128
+description connected to VLAN10 EMPLOYEE VLAN
+exit
+!
+int gig0/2.20
+encapsulation dot1q 20
+ip address 10.10.34.129 255.255.255.192
+description connected to VLAN20 MANAGEMENT VLAN
+exit
+!
+int gig0/2.500
+encapsulation dot1q 500
+ip address 10.10.32.1 255.255.254.0
+description connected to VLAN500 GUEST VLAN
+exit
+!
+int gig0/2
+no shutdown
+exit
+!
+
+@ SW1 Side:
+-----------
+!
+int gig0/2
+switchport mode trunk
+switchport nonegotiate
+end
+!
+show interface trunk
+
+
+@ at this point configure computer and switches with Default Gateway
+--------------------------------------------------------------------
+
+
+SW1/SW2/SW3 Config:	ip default-gateway 10.10.34.129
+
+
+
+
+* Configure GATEWAY2 with Subinterfacing to support VLANS:
+----------------------------------------------------------
+
+hostname GATEWAY2
+!
+int gig0/0
+ip address 10.10.34.202 255.255.255.252
+description connected to GATEWAY1
+no shutdown
+!
+int gig0/1
+ip address 10.10.34.198 255.255.255.252
+description connected to COREROUTER
+no shutdown
+!
+int gig0/2.10
+encapsulation dot1q 10
+ip address 10.10.34.2 255.255.255.128
+description connected to VLAN10 EMPLOYEE VLAN
+exit
+!
+int gig0/2.20
+encapsulation dot1q 20
+ip address 10.10.34.130 255.255.255.192
+description connected to VLAN20 MANAGEMENT VLAN
+exit
+!
+int gig0/2.500
+encapsulation dot1q 500
+ip address 10.10.32.2 255.255.254.0
+description connected to VLAN20 MANAGEMENT VLAN
+exit
+!
+int gig0/2
+no shutdown
+exit
+!
+
+@ SW2 Side:
+-----------
+!
+int gig0/2
+switchport mode trunk
+end
+!
+show interface trunk
+
+
+
+
+* Configure DC-MLSWITCH with SVI &amp; Routed Port to support VLANS:
+----------------------------------------------------------------
+
+vlan 100
+name PRIVATEVLAN
+vlan 200
+name PUBLICVLAN
+!
+int fa0/10
+switchport mode access
+switchport access vlan 100
+exit
+!
+int fa0/20
+switchport mode access
+switchport access vlan 200
+exit
+!
+!
+!--&gt; SVI config
+!
+!
+ip routing
+!
+!
+int vlan 100
+ip address 192.168.3.1 255.255.255.0
+description gateway for VLAN100
+no shutdown
+exit
+!
+int vlan 200
+ip address 192.168.4.1 255.255.255.0
+description gateway for VLAN200
+no shutdown
+exit
+!
+!
+!--&gt; Routed Port Config
+!
+interface gig0/2
+no switchport
+ip address 192.168.2.1 255.255.255.0
+description connected to CORESWITCH
+no shutdown
+exit
+!
+!
+!
+!
+show int gig0/2 switchport
+!
+show ip route
+!
+ping 192.168.2.2
+
+
+
+----------------------------------------------------------------------------------------
+CDP DEMO:
+---------
+
+@ SW1  enter:	
+
+show cdp
+show cdp neighbor
+show cdp neighbor detail
+
+@ SW3 enter:
+
+no cdp run			--&gt;  disables CDP globally in the switch
+
+@ SW1  enter:	
+
+show cdp neighbors		--&gt;  note the HoldTime for SW3
+
+@ SW2 enter:
+
+show cdp neighbors		--&gt;  note the HoldTime for SW3
+
+@ SW3 enable CDP specifically on Fa0/1 &amp; Fa0/11 only:
+
+cdp run
+int range fa0/2 - 10, fa0/12-24		
+no cdp enable			
+!
+
+@ SW1 &amp; SW2 enter:
+
+show cdp neighbors		--&gt; verify neighbors
+
+----------------------------------------------------------------------------------------
+CONFIGURE WIRELESS LAN FOR EMPLOYEE &amp; GUEST:
+--------------------------------------------
+
+WLAN SSID:	Employee WiFi = employeewifi
+		Guest WiFi = guestwifi
+
+CHANNEL:	Employee WiFi = 1
+		Guest WiFi = 6
+
+WIFI SECURITY:	Employee WiFi = WEP (KEY = 1234567890)
+		Guest WiFi = WPA2 (KEY = secret)
+
+----------------------------------------------------------------------------------------
+STATIC ROUTING:
+---------------
+
+* Configure Static Route between DC-MLSWITCH &amp; COREROUTER:
+----------------------------------------------------------
+
+TEST using PING 192.168.2.2 from PRIVATE-SERVER --  reply = request timeout
+TEST using PING 192.168.1.4 from PRIVATE-SERVER --  reply = destination unreachable
+
+@ COREROUTER:
+-------------
+!
+ip route 192.168.3.0 255.255.255.0 gig0/2 192.168.2.1
+
+OR 
+
+ip route 192.168.3.0 255.255.255.0 gig0/2
+ip route 192.168.3.0 255.255.255.0 192.168.2.1
+!
+do show ip route
+
+--------------------
+
+!
+ip route 192.168.4.0 255.255.255.0 gig0/2 192.168.2.1
+
+OR 
+
+ip route 192.168.4.0 255.255.255.0 gig0/2
+ip route 192.168.4.0 255.255.255.0 192.168.2.1
+!
+do show ip route
+
+-----------------------------
+
+Route Summarization:
+
+192.168.0.0  -- 192.168.00000 000.0	--  192.168.0.0/21
+...
+192.168.3.0  -- 192.168.00000 011.0    
+192.168.4.0  -- 192.168.00000 100.0
+...
+192.168.7.0  -- 192.168.00000 111.0
+
+
+no ip route 192.168.3.0 255.255.255.0 gig0/2
+no ip route 192.168.3.0 255.255.255.0 192.168.2.1
+!
+no ip route 192.168.4.0 255.255.255.0 gig0/2
+no ip route 192.168.4.0 255.255.255.0 192.168.2.1
+!
+!
+ip route 192.168.0.0 255.255.248.0 gig0/2
+ip route 192.168.0.0 255.255.248.0 192.168.2.1
+
+
+* Configure a Default Route @ DC-MLSWITCH &amp; EDGEROUTER:
+-------------------------------------------------------
+
+default route = 0.0.0.0/0 (catch any route)
+
+
+@ DC-MLSWITCH:
+--------------
+
+TEST using PING 192.168.1.4 from PRIVATE-SERVER --  reply = destination unreachable
+
+!
+!
+ip route 0.0.0.0 0.0.0.0 gig0/2
+ip route 0.0.0.0 0.0.0.0 192.168.2.2
+!
+do show ip route
+!
+
+TEST again using PING 192.168.1.4 from PRIVATE-SERVER -- reply = successful
+
+
+@ EDGEROUTER:
+-------------
+
+hostname EDGEROUTER
+!
+interface fa0/0
+ip address 192.168.1.1 255.255.255.0
+description connected to CORE NET
+no shutdown
+exit
+!
+interface fa0/1
+ip address 200.200.200.11 255.255.255.0
+description connected to ISP
+no shutdown
+exit
+!
+ip route 0.0.0.0 0.0.0.0 fa0/1
+
+
+----------------------------------------------------------------------------------------
+DYNAMIC ROUTING PROTOCOL using RIPv2:
+-------------------------------------
+
+* Basic RIPv1 Configuration: Configure among GATEWAY1, COREROUTER &amp; EDGEROUTER
+------------------------------------------------------------------------------
+Class A - N.0.0.0 = 10.0.0.0
+Class B - N.N.0.0 = 172.16.0.0
+Class C - N.N.N.0 = 192.168.1.0
+                    192.168.2.0
+                    192.168.3.0
+                    192.168.4.0
+
+
+
+GATEWAY1:
+---------
+
+do show ip protocols
+!
+router rip		--&gt;  re-enter do show ip protocols &amp; do debug ip rip
+network 10.0.0.0	--&gt;  note log messages from debug ip rip
+			--&gt;  after discussion, do undebug ip rip
+			--&gt;  re-enter do show ip protocols 
+
+COREROUTER:
+-----------
+
+do debug ip rip
+!
+router rip		--&gt;  notice NO updates receives
+network 10.0.0.0	--&gt;  updates starts being received
+network 192.168.1.0	--&gt;  enter do undebug all
+
+
+EDGEROUTER:
+-----------
+
+do debug ip rip
+!
+router rip		--&gt;  notice NO updates receives
+network 192.168.1.0	--&gt;  updates starts being received
+			--&gt;  note 10.0.0.0 a classful summary address received with no prefix
+
+
+
+* Implementing RIPv2 and Disable Automatic Summarization 
+  on GATEWAY1, COREROUTER &amp; EDGEROUTER
+---------------------------------------------------------
+
+GATEWAY1:
+---------
+
+!
+router rip
+version 2
+no auto-summary
+!
+do show ip protocols
+
+GATEWAY1, COREROUTER &amp; EDGEROUTER:
+----------------------------------
+
+!
+router rip
+version 2					// Convert to Version 2
+no auto-summary					// Disable Automatic Summarization
+!
+do show ip protocols		
+
+
+* Configure RIPv2 on GATEWAY2:
+------------------------------
+
+!
+router rip
+version 2
+no auto-summary
+network 10.0.0.0
+!
+!
+do show ip route	--&gt;  verify that all routes are available in the Routing Table
+
+
+* Testing connectivity @ VLAN 10 &amp; 20 PCs
+
+ping 192.168.1.1
+!
+tracert 192.168.1.1
+
+
+* Configure COREROUTER advertise Static Routes or
+  Summary Static Route via RIPv2 updates:
+-------------------------------------------------
+
+COREROUTER:
+---------
+
+undebug ip rip   		//  or undebug all
+!
+!
+router rip
+redistribute static
+redistribute connected
+exit
+!
+!
+do show ip route
+
+* Verify @ GATEWAY1, GATEWAY2 &amp; EDGEROUTER that 192.168.0.0/22 
+  Static Summary Address is in their Routing Table:
+--------------------------------------------------------------
+!
+show ip route
+
+* Redistribute Default Route from EDGEROUTER
+--------------------------------------------
+
+!
+router rip
+default-information originate
+exit
+!
+
+* Verify @ GATEWAY1 &amp; GATEWAY2 that Default Route
+  is now in their Routing Table:
+-------------------------------------------------
+
+!
+show ip route
+!
+show ip rip database		--&gt;  displays RIPv2 RIB
+
+
+*  Implementing Passive Interfaces on RIPv2
+-----------------------------------------------------------------
+Configure @ GATEWAY1 &amp; GATEWAY2:
+--------------------------------
+
+@ GATEWAY1: Method 1
+--------------------
+
+show ip protocols
+!
+router rip
+passive-interface gig0/2.10
+passive-interface gig0/2.20
+passive-interface gig0/2.500
+end
+!
+show ip protocols		--&gt; verify passive-interfaces
+
+
+@ GATEWAY2: Method 2
+--------------------
+
+show ip protocols
+!
+router rip
+passive-interface default
+no passive-interface gig0/0
+no passive-interface gig0/1
+end
+!
+show ip protocols		--&gt; verify passive-interfaces
+
+
+
+----------------------------------------------------------------------------------------
+DYNAMIC ROUTING PROTOCOL USING SINGLE-AREA OSPF:
+------------------------------------------------
+
+* Basic OSPF Configuration: Configure among GATEWAY1, GATEWAY2, COREROUTER &amp; EDGEROUTER
+------------------------------------------------------------------------------
+
+GATEWAY1: Method1 (classful address)
+------------------------------------
+
+show ip protocols
+debug ip ospf events
+debug ip ospf adj
+!
+!
+router ospf 100				--&gt;  re-enter do show ip protocols 
+network 10.0.0.0 0.255.255.255 area 0	--&gt;  enables ospf on all 10.0.0.0/8 subnets
+					--&gt;  re-enter do show ip protocols, discuss important details
+ 					--&gt;  discuss event logs from debug ip ospf events
+
+		SM		WC
+Class A = /8  255.0.0.0   0.255.255.255
+Class B = /16 255.255.0.0  0.0.255.255
+Class C = /24 255.255.255.0 0.0.0.255
+
+
+GATEWAY2: Method2 (specific subnets)
+------------------------------------
+
+show ip protocols
+debug ip ospf events
+debug ip ospf adj
+!
+router ospf 100				--&gt;  re-enter do show ip protocols 
+network 10.10.34.196 0.0.0.3 area 0	--&gt;  enables ospf on this network only
+network 10.10.34.200 0.0.0.3 area 0	--&gt;  note the adjacency formed (state transitions to full adjacency)
+network 10.10.32.0 0.0.1.255 area 0
+network 10.10.34.0 0.0.0.127 area 0
+network 10.10.34.128 0.0.0.63 area 0
+!
+
+
+!
+router ospf 100
+network 10.10.34.196 0.0.0.3 area 0
+network 10.10.34.200 0.0.0.3 area 0
+network 10.10.32.0 0.0.1.255 area 0
+network 10.10.34.0 0.0.0.127 area 0
+network 10.10.34.128 0.0.0.63 area 0
+!
+
+
+* undebug all @ GATEWAY1 &amp; GATEWAY2
+
+
+COREROUTER: Method 3 (Specific interface IP address)
+----------------------------------------------------
+
+do show ip int brief
+!
+router ospf 100
+network 10.10.34.193 0.0.0.0 area 0
+network 10.10.34.197 0.0.0.0 area 0
+network 192.168.1.4 0.0.0.0 area 0
+!
+show ip ospf neighbors
+show ip ospf database
+show ip ospf interface gig0/0
+show ip route ospf
+
+EDGEROUTER: Method 3 (Specific interface IP address)
+----------------------------------------------------
+
+do show ip int brief
+!
+router ospf 100
+network 192.168.1.1 0.0.0.0 area 0
+
+
+REMOTE-DCR1: Method 3 (Specific interface IP address)
+----------------------------------------------------
+
+do show ip int brief
+!
+hostname REMOTE-DCR1
+!
+int fa0/0
+ip address 192.168.1.2 255.255.255.0
+description connected to CORE NET
+no shutdown
+exit
+!
+int fa0/1
+ip address 200.200.200.12 255.255.255.0
+description connected to ISP
+no shutdown
+exit
+!
+router ospf 100
+network 192.168.1.2 0.0.0.0 area 0
+exit
+!
+
+
+* Configure COREROUTER advertise Static Routes or
+  Summary Static Route via OSPF updates:
+-------------------------------------------------
+
+COREROUTER:
+-----------
+
+!
+router ospf 100
+redistribute static subnets
+redistribute connected subnets
+exit
+!
+
+
+* Verify @ GATEWAY1, GATEWAY2, VPNSERVER &amp; EDGEROUTER that 192.168.0.0/22 
+  Static Summary Address is in their Routing Table:
+--------------------------------------------------------------
+!
+show ip route
+
+* Redistribute Default Route from EDGEROUTER
+--------------------------------------------
+
+!
+router ospf 100
+default-information originate
+exit
+!
+
+* Remove RIPv2 Process on GATEWAY1, GATEWAY2, COREROUTER &amp; EDGEROUTER
+---------------------------------------------------------------------
+
+!
+no router rip
+!
+show ip protocols
+
+
+
+*  OSPF Optional Configuration 1: Customize OSPF router-id
+----------------------------------------------------------
+
+@ GATEWAY1:change router-id to 1.1.1.1 using Loopback
+
+
+int loopback 1
+ip address 1.1.1.1 255.255.255.255
+exit
+!
+copy run start
+!
+reload
+
+!
+show ip protocols
+
+
+@ GATEWAY2:change router-id to 2.2.2.2 using "router-id" command
+
+router ospf 100
+router-id 2.2.2.2
+end
+!
+clear ip ospf process
+
+!
+show ip protocols
+
+
+
+*  OSPF Optional Configuration 2: Ensuring COREROUTER as DR &amp; REMOTE-DCR1 as BDR
+--------------------------------------------------------------------------------
+DR = Designated Router ; BDR = Backup Designated Router
+
+
+@ COREROUTER:
+-------------
+
+show ip ospf neighbor
+!
+show ip ospf interface
+!
+interface vlan 1
+ip ospf priority 255
+exit
+!
+do show ip ospf interface
+
+
+@ EDGEROUTER:
+-------------
+
+show ip ospf interface
+!
+interface fa0/0
+ip ospf priority 0
+shutdown
+!
+!
+no shutdown
+!
+exit
+
+@ REMOTE-DCR1:
+--------------
+
+show ip ospf interface
+!
+interface fa0/0
+ip ospf priority 0
+shutdown
+!
+!
+no shutdown
+!
+exit
+
+
+* Verify @ COREROUTER &amp; REMOTE-DCR1 the DR and BDR
+--------------------------------------------------
+!
+show ip ospf neighbor
+
+
+*  OSPF Optional Configuration 3: Modifying Auto-Cost Reference BW to 1Gbps:
+----------------------------------------------------------------------------
+Configure on all Routers Participating in OSPF:
+Cost = 100,000,000/bps ;  Cost = 1,000,000,000/bps
+
+show ip ospf interfaces			--&gt;  note the interface COST
+!
+router ospf 100
+auto-cost reference-bandwidth 1000
+end
+!
+show ip ospf interfaces			--&gt;  note changes of the interface COST
+
+
+*  OSPF Optional Configuration 4: Modifying Hello and Dead Interval Timer to 5s and 20s respectively:
+---------------------------------------------------------------------------------------
+Modify hello time to 5s and dead interval time to 20s @ EDGEROUTER:
+--------------------------------------------------------------------
+
+show ip ospf neighbor
+!
+show ip ospf interface fa0/0
+!
+int fa0/0
+ip ospf hello-interval 5
+ip ospf dead-interval 20
+end
+!
+show ip ospf interface fa0/0
+!
+show ip ospf neighbor
+
+Modify hello and dead interval timers to 5s and 20s respectively @ COREROUTER &amp; REMOTE-DCR1
+--------------------------------------------------------------------------------------------
+
+! For REMOTE-DCR1
+!
+int fa0/0
+ip ospf hello-interval 5
+ip ospf dead-interval 20
+end
+!
+show ip ospf neighbor
+!
+show ip route
+
+------------------
+
+! For COREROUTER
+!
+int vlan 1
+ip ospf hello-interval 5
+ip ospf dead-interval 20
+end
+!
+show ip ospf neighbor
+!
+show ip route
+
+*  OSPF Optional Configuration 5: Modifying BW or COST to Manipulate Path Selection
+--------------------------------------------------------------------------------------
+Recommendation:  Cost should be modified instead of BW.  BW can potentially affect QoS
+                 When BW is modified it automatically calculate the COST equivalent
+--------------------------------------------------------------------------------------
+
+Modify Cost @ GATEWAY1 to make through COREROUTE as Best Path to 10.10.34.196/30
+--------------------------------------------------------------------------------
+
+show ip route 10.10.34.196
+!
+show ip route ospf
+!
+show ip ospf interface gig0/1
+!
+int gig0/1
+ip ospf cost 10
+exit
+!
+show ip ospf interface gig0/1	--&gt;  notice interface cost is now 10
+!
+show ip route ospf		--&gt;  notice route is out to gig0/0 (lower cost metric)
+
+
+* Note that cost metric used is on outgoing interface to destination network, hence
+  change may affect other routers route selection proces, see COREROUTER.
+-----------------------------------------------------------------------------------
+
+@ COREROUTER, enter:
+
+!
+show ip route ospf		--&gt;  verify route to 10.10.34.200/30
+
+
+*  OSPF Optional Configuration 6: Implementing Passive Interfaces
+-----------------------------------------------------------------
+Configure @ GATEWAY1 &amp; GATEWAY2:
+--------------------------------
+
+@ GATEWAY1: Method 1
+--------------------
+
+show ip ospf neighbor
+!
+show ip protocols
+!
+router ospf 100
+passive-interface gig0/2
+passive-interface gig0/2.10
+passive-interface gig0/2.20
+passive-interface gig0/2.500
+end
+!
+!
+!
+show ip ospf neighbor		--&gt; notice adjacency on gig0/2.10 is turned down
+!
+show ip protocols		--&gt; verify passive-interfaces
+
+
+@ GATEWAY2: Method 2
+--------------------
+
+show ip ospf neighbor
+!
+show ip protocols
+!
+router ospf 100
+passive-interface default
+no passive-interface gig0/0
+no passive-interface gig0/1
+end
+!
+!
+!
+!
+show ip ospf neighbor		--&gt; notice adjacency on gig0/2.10 is turned down
+!
+show ip protocols		--&gt; verify passive-interfaces
+
+
+*  OSPF Optional Configuration 7: Implementing MD5 Authentication between GATEWAY1 &amp; GATEWAY2:
+----------------------------------------------------------------------------------------------
+
+@ GATEWAY1:
+-----------
+
+show ip ospf neighbor			--&gt;  note the two routers are peer
+!
+interface  gig0/1
+ip ospf message-digest-key 1 md5 authpass
+ip ospf authentication message-digest
+!
+show ip ospf neighbor			--&gt;  note the peering should be turn down
+
+@ GATEWAY2:
+-----------
+
+!
+interface  gig0/0
+ip ospf message-digest-key 1 md5 authpass
+ip ospf authentication message-digest
+!
+show ip ospf neighbor			--&gt;  note that adjacency is back
+
+
+
+----------------------------------------------------------------------------------------
+DYNAMIC ROUTING PROTOCOL with MULTIAREA OSPF:
+---------------------------------------------
+Modify Current Configuration to support Multiarea OSPF:
+-------------------------------------------------------
+
+* COREROUTER is ABR for Area 0 &amp; Area 10
+----------------------------------------
+
+@ COREROUTER:
+-------------
+
+!--&gt;  Recommended approach
+!
+router ospf 100	
+no network 10.10.34.193 0.0.0.0 area 0
+no network 10.10.34.197 0.0.0.0 area 0
+network 10.10.34.193 0.0.0.0 area 10
+network 10.10.34.197 0.0.0.0 area 10
+exit
+!
+
+-------------------------------------------
+
+no router ospf 100
+!
+router ospf 100
+network 10.10.34.193 0.0.0.0 area 10
+network 10.10.34.197 0.0.0.0 area 10
+network 192.168.1.4 0.0.0.0 area 0
+redistribute static subnets
+redistribute connected subnets
+auto-cost reference-bandwidth 1000
+router-id 3.3.3.3
+exit
+!
+!
+do clear ip ospf process
+
+
+@ GATEWAY1:
+-----------
+
+no router ospf 100
+!
+router ospf 100
+network 10.0.0.0 0.255.255.255 area 10
+passive-interface default
+no passive-interface GigabitEthernet0/0
+no passive-interface GigabitEthernet0/1
+auto-cost reference-bandwidth 1000
+router-id 1.1.1.1
+end
+
+
+or 
+
+router ospf 100
+no network 10.0.0.0 0.255.255.255 area 0
+network 10.0.0.0 0.255.255.255 area 10
+
+
+@ GATEWAY2:
+-----------
+
+no router ospf 100
+!
+router ospf 100
+network 10.0.0.0 0.255.255.255 area 10
+passive-interface default
+no passive-interface GigabitEthernet0/0
+no passive-interface GigabitEthernet0/1
+auto-cost reference-bandwidth 1000
+router-id 2.2.2.2
+end
+
+-----------------------------------------
+
+no router ospf 100
+!
+router ospf 100
+ router-id 2.2.2.2
+ log-adjacency-changes
+ passive-interface default
+ no passive-interface GigabitEthernet0/0
+ no passive-interface GigabitEthernet0/1
+ auto-cost reference-bandwidth 1000
+ network 10.10.34.196 0.0.0.3 area 10
+ network 10.10.34.200 0.0.0.3 area 10
+ network 10.10.32.0 0.0.1.255 area 10
+ network 10.10.34.0 0.0.0.127 area 10
+ network 10.10.34.128 0.0.0.63 area 10
+
+or
+
+router ospf 100
+no network 10.10.34.196 0.0.0.3 area 0
+no network 10.10.34.200 0.0.0.3 area 0
+no network 10.10.32.0 0.0.1.255 area 0
+no network 10.10.34.0 0.0.0.127 area 0
+no network 10.10.34.128 0.0.0.63 area 0
+!
+network 10.10.0.0 0.0.255.255 area 10
+
+
+
+* REMOTE-DCR1 is ABR for Area 0 &amp; Area 172
+------------------------------------------
+
+@ REMOTE-DCR1:
+--------------
+
+!
+int s0/0/0
+ip address 172.16.1.1 255.255.255.252
+description connected to REMOTE-DCR2
+clock rate 2000000
+no shutdown
+exit
+!
+int s0/0/1
+ip address 172.16.1.5 255.255.255.252
+description connected to REMOTE-DCR2
+clock rate 2000000
+no shutdown
+exit
+!
+router ospf 100
+network 192.168.1.0 0.0.0.255 area 0
+network 172.16.1.0 0.0.0.255 area 172
+exit
+!
+
+
+@ REMOTE-DCR2
+-------------
+
+hostname REMOTE-DCR2
+!
+int s0/0/0
+ip address 172.16.1.2 255.255.255.252
+description connected to REMOTE-DCR1
+no shutdown
+exit
+!
+int s0/0/1
+ip address 172.16.1.6 255.255.255.252
+description connected to REMOTE-DCR1
+no shutdown
+exit
+!
+int fa0/1
+ip address 172.16.2.1 255.255.255.0
+description connected to DC-SWITCH
+no shutdown
+exit
+!
+router ospf 100
+network 172.16.1.0 0.0.0.255 area 172
+network 172.16.2.1 0.0.0.0 area 172
+exit
+!
+
+@ REMOTE-DCR2:   show ip route		--&gt;  Verify Inter-Area Routes
+
+@ GATEWAY2:   show ip route		--&gt;  Verify Inter-Area Routes
+
+
+* Summarizing ROUTES @ ABRs:
+----------------------------
+
+@ REMOTE-DCR1:  Area 172 Summary Address = 172.16.0.0/22
+172.16.1.0	--&gt;  172.16.000000 01.0	--&gt;  172.16.0.0/22
+172.16.2.0	--&gt;  172.16.000000 10.0
+
+
+!
+router ospf 100
+area 172 range 172.16.0.0 255.255.252.0
+exit
+!
+
+	
+@ COREROUTER:  	Area 10 Summary Address = 10.10.32.0/22
+10.10.32.0	--&gt; 10.10.001000 00.0  --&gt;  10.10.32.0/22
+10.10.34.0	--&gt; 10.10.001000 10.0
+
+
+!
+router ospf 100
+area 10 range 10.10.32.0 255.255.252.0
+exit
+!
+
+
+
+----------------------------------------------------------------------------------------
+DYNAMIC ROUTING PROTOCOL with EIGRP:
+------------------------------------
+
+* Remove OSPF Routing on all Participating Routers: enter as follows:
+---------------------------------------------------------------------
+
+!
+no router ospf 100
+!
+
+
+* Configure Basic EIGRP on all Participating Routers:
+-----------------------------------------------------
+
+@ GATEWAY1: Method 1 using 0.0.0.0/32
+-------------------------------------
+
+!
+router eigrp 100
+network 0.0.0.0 255.255.255.255
+end
+!
+
+@ GATEWAY2: Method 2 using Specific Subnets
+-------------------------------------------
+
+show ip route connected
+!
+router eigrp 100
+network 10.10.34.196 0.0.0.3
+network 10.10.34.200 0.0.0.3
+network 10.10.32.0 0.0.1.255
+network 10.10.34.0 0.0.0.127
+network 10.10.34.128 0.0.0.63
+end
+!
+
+or
+
+router eigrp 100
+network 10.10.0.0 0.0.255.255
+
+or 
+
+router eigrp 100
+network 10.10.32.0 0.0.3.255		--&gt;  10.10.32.0/22
+
+
+@ COREROUTER: Method 3 using Specific IP address Assigned
+---------------------------------------------------------
+
+show ip interface brief
+!
+router eigrp 100
+network 10.10.34.193 0.0.0.0
+network 10.10.34.197 0.0.0.0
+network 192.168.1.4 0.0.0.0
+end
+!
+
+
+@ EDGEROUTER: Method 3 using Specific IP address Assigned
+---------------------------------------------------------
+
+show ip interface brief
+!
+router eigrp 100
+network 192.168.1.1 0.0.0.0
+end
+!
+
+@ REMOTE-DCR1: Method 3 using Specific IP address Assigned
+---------------------------------------------------------
+
+!
+router eigrp 100
+network 192.168.1.2 0.0.0.0
+network 172.16.1.0 0.0.0.255
+end
+!
+
+@ REMOTE-DCR2:
+--------------
+
+!
+router eigrp 100
+network 172.16.0.0 0.0.255.255
+end
+!
+
+
+or
+
+!
+router eigrp 100
+network 172.16.0.0 0.0.3.255
+end
+!
+
+* Verify Routing Table of all Partcipating Routers
+--------------------------------------------------
+
+!
+show ip route
+
+* Disable Automatic Classful Route Summarization
+------------------------------------------------
+* For ISR G1, automatic summarization is enabled by default
+* For ISR G2, automatic summarization is disabled by default
+
+@ COREROUTER:
+-------------
+
+!
+show ip route		--&gt;  note a 172.16.0.0/16 route entry installed
+
+@ REMOTE-DCR1:
+--------------
+
+show ip route	  --&gt;  note a 172.16.0.0/16 route entry pointing to null 0 is installed
+!
+router eigrp 100
+no auto-summary
+end
+!
+show ip route 	--&gt;  note a 172.16.0.0/16 route entry pointing to null 0 is no longer installed
+
+
+@ COREROUTER:
+-------------
+
+!
+show ip route		--&gt;  note a 172.16.0.0/16 route entry is not installed anymore
+                             instead specific subnets of 172.16.0.0/16 are received.
+
+
+* Redistribute Static and Default Routes
+----------------------------------------
+
+@ COREROUTER:
+-------------
+
+!
+router eigrp 100
+redistribute static
+redistribute connected
+exit
+!
+
+
+-- Verify @ GATEWAY1, GATEWAY2 &amp; REMOTE-DCR2 that STATIC Summary route 192.168.0.0/22 
+   is now in their routing table:
+
+!
+show ip route
+
+@ EDGEROUTER:
+-------------
+
+!
+router eigrp 100
+redistribute static
+end
+
+
+-- Verify @ GATEWAY1, GATEWAY2 &amp; REMOTE-DCR2 that Default Route 0.0.0.0/0 is now in their routing table:
+
+!
+show ip route
+
+---------------------------------
+* Route Summrization:  	---------
+---------------------------------
+
+* Configure REMOTE-DCR1 to advertise 172.16.0.0/22 instead of individual subnets of 172.16.0.0
+
+!
+int fa0/0
+ip summary-address eigrp 100 172.16.0.0 255.255.252.0
+exit
+!
+
+* Configure COREROUTER to advertise 10.10.32.0/22 instead of individual subnets of 10.0.0.0
+
+!
+int vlan 1	
+ip summary-address eigrp 100 10.10.32.0 255.255.252.0
+exit
+!
+
+* Route Manipulation:  Configure GATEWAY1 to prefer Route to remotes subnets via GATEWAY2
+----------------------------------------------------------------------------------------
+
+@ GATEWAY1 set interface gig0/0 with higher delay than gig0/1
+-------------------------------------------------------------
+default delay for gig0/0 is 10us, change it to 100us
+
+show int gig0/0		--&gt;  note of the Delay
+show ip route  		--&gt;  note route to remote subnets is via COREROUTER
+!
+int gig0/0
+delay 10
+exit
+!
+show int gig0/0		--&gt;  note of the Delay changes
+show ip route  		--&gt;  note route to remote subnets is via GATEWAY2
+
+
+* Unequal Cost Load Balancing: change variance of Gateway1 to 10
+----------------------------------------------------------------
+show ip eigrp topology
+
+router eigrp 100
+variance 10
+exit
+!
+!
+show ip route
+
+----------------------
+
+
+router eigrp 100
+variance 2
+exit
+!
+!
+show ip route
+
+
+-----------------------
+
+router eigrp 100
+variance 1
+exit
+!
+!
+show ip route
+
+
+----------------------------------------------------------------------------------------
+* Implementing Backup Static Route @ REMOTE-DCR1 using Floating Static Route:
+-----------------------------------------------------------------------------
+
+@ Configure REMOTE-DCR1 to use WAN Link 1 as Backup Route for 172.16.2.0/24 network
+
+no router eigrp 100
+!
+router eigrp 100
+network 172.16.1.4 0.0.0.3
+network 192.168.1.0 0.0.0.255
+no auto-summary
+exit
+!
+!
+
+@ Configure REMOTE-DCR2 to use WAN Link 1 as Backup Route for 0.0.0.0/0 network
+
+no router eigrp 100
+!
+router eigrp 100
+network 172.16.1.4 0.0.0.3
+network 172.16.2.0 0.0.0.255
+no auto-summary
+exit
+!
+
+-----------------------------------------------------------------
+
+!
+!--&gt;  Backup route going to Remote-DCR2
+!
+ip route 172.16.2.0 255.255.255.0 s0/0/0 200
+!
+!
+
+@ Configure REMOTE-DCR2 to use WAN Link 2 as Backup Route for 0.0.0.0/0 network
+
+!
+ip route 0.0.0.0 0.0.0.0 s0/0/0 200
+!
+
+-- Verify routing table with show ip route
+
+-- Test floating static route by shutting down s0/0/1, 
+   it should re-route to s0/0/0
+
+
+----------------------------------------------------------------------------------------
+* Implementing EIGRP MD5 Authentication Between REMOTE-DCR1 &amp; REMOTE-DCR2:
+--------------------------------------------------------------------------
+
+@ REMOTE-DCR1:
+--------------
+
+show ip eigrp neighbor			--&gt;  peering is up
+!
+key chain KEYS
+key 1
+key-string 123pass
+exit
+key 2
+key-string 1234pass
+exit
+!
+exit
+interface s0/0/1
+ip authentication mode eigrp 100 md5
+ip authentication key-chain eigrp 100 KEYS
+exit
+!
+show ip eigrp neighbor			--&gt;  peering should go down
+
+
+@ REMOTE-DCR2:
+--------------
+
+!
+key chain KEYS
+key 1
+key-string 123pass
+exit
+!
+!
+interface s0/0/1
+ip authentication mode eigrp 100 md5
+ip authentication key-chain eigrp 100 KEYS
+exit
+!
+show ip eigrp neighbor			--&gt;  peering should be back again
+show ip route				--&gt;  routing tables should have route entries
+
+
+
+----------------------------------------------------------------------------------------
+* Implementing Access Control List (ACL)
+----------------------------------------------------------------------------------------
+
+
+SCENARIO1:  Only EMPLOYEE-PC1 has WEB access on Private-SERVER. 
+Other Services are allowed on this server for everyone.
+
+STEP1:  Create ACL:  	SOURCE = EMPLOYEE-PC1 (10.10.34.11/25)
+			DESTINATION = PRIVATE-SERVER (192.168.3.11/24)
+			Protocol = http (80) &amp; https (443)
+
+	Configure &amp; Apply:  Near the destination because diverse location of sources
+				DC-MLSWITCH near Private-Server (destination)
+
+
+Numbered ACL: Extended ACL#100-199
+----------------------------------
+
+access-list 101 permit tcp 10.10.34.11 0.0.0.0 192.168.3.11 0.0.0.0 eq 80
+access-list 101 permit tcp 10.10.34.11 0.0.0.0 192.168.3.11 0.0.0.0 eq 443
+access-list 101 deny tcp 0.0.0.0 255.255.255.255 192.168.3.11 0.0.0.0 eq 80
+access-list 101 deny tcp 0.0.0.0 255.255.255.255 192.168.3.11 0.0.0.0 eq 443
+access-list 101 permit ip 0.0.0.0 255.255.255.255 0.0.0.0 255.255.255.255
+
+or
+
+access-list 101 permit tcp host 10.10.34.11 host 192.168.3.11 eq 80
+access-list 101 permit tcp host 10.10.34.11 host 192.168.3.11 eq 443
+access-list 101 deny tcp any host 192.168.3.11 eq 80
+access-list 101 deny tcp any host 192.168.3.11 eq 443
+access-list 101 permit ip any any
+
+
+STEP2:  Apply ACL 101 @ DC-MLSWITCH interface vlan 100 outbound
+
+int vlan 100
+ip access-group 101 out
+
+
+SCENARIO2:  Guest PCs should only be allowed Internet connectivity.
+-------------------------------------------------------------------
+
+
+Source: Guest VLAN 500 (10.10.32.0/23 = 255.255.254.0 = 0.0.1.255)
+Destination: Internet (ANY)
+Protocols: 80/443/dns(udp/tcp 53)
+
+Configure: @ Gateway1 (near the source) ; applied on interface gig0/2.500
+
+
+STEP1:  Create ACL Rules
+
+Use Name ACL:
+
+!
+ip access-list extended GUESTRULES
+deny ip 10.10.32.0 0.0.1.255 10.0.0.0 0.255.255.255
+deny ip 10.10.32.0 0.0.1.255 172.16.0.0 0.15.255.255
+deny ip 10.10.32.0 0.0.1.255 192.168.0.0 0.0.255.255
+permit tcp 10.10.32.0 0.0.1.255 any eq 80
+permit tcp 10.10.32.0 0.0.1.255 any eq 443
+permit udp 10.10.32.0 0.0.1.255 any eq 53
+permit ip any any
+exit
+!
+
+or 
+
+Numbered ACL
+
+access-list 102 deny ip 10.10.32.0 0.0.1.255 10.0.0.0 0.255.255.255
+access-list 102 deny ip 10.10.32.0 0.0.1.255 172.16.0.0 0.15.255.255
+access-list 102 deny ip 10.10.32.0 0.0.1.255 192.168.0.0 0.0.255.255
+access-list 102 permit tcp 10.10.32.0 0.0.1.255 any eq 80
+access-list 102 permit tcp 10.10.32.0 0.0.1.255 any eq 443
+access-list 102 permit udp 10.10.32.0 0.0.1.255 any eq 53
+access-list 102 permit tcp 10.10.32.0 0.0.1.255 any eq 53
+access-list 102 permit ip any any
+exit
+!
+
+STEP2:  Apply ACL
+
+int gig0/2.500
+ip access-group GUESTRULES in
+
+or
+
+int gig0/2.500
+ip access-group 102 in
+
+
+----------------------------------------------------------------------------------------
+Implementing Network Address Translation (NAT)
+----------------------------------------------------------------------------------------
+
+@ PLDT Router Configure Basic Config:
+-------------------------------------
+
+hostname PLDT-ISP
+!
+int fa0/1
+ip address 200.200.200.1 255.255.255.0
+no shutdown
+exit
+!
+int fa0/0
+ip address 200.200.201.1 255.255.255.0
+no shutdown
+exit
+!
+
+
+Assume:  PLDT provides use with 200.200.200.11 - .20 /24
+@ EDGEROUTER Configure Static NAT:  Public Server reachable from internet users
+					192.168.4.11 = 200.200.200.13
+-------------------------------------------------------------------------------
+
+!
+ip nat inside source static 192.168.4.11 200.200.200.13
+!
+int fa0/0
+ip nat inside
+exit
+!
+int fa0/1
+ip nat outside
+exit
+!
+!
+!
+debug ip nat
+!
+show ip nat translation
+
+
+@ EDGEROUTER Configure Port Address Translation (PAT):  
+  ALL host in VLAN 10 (10.10.34.0/25) ip addresses translated to 200.200.200.11 (fa0/1)
+---------------------------------------------------------------------------------------
+/25 = 255.255.255.128 = 0.0.0.127 (127 = 01111111)
+/26 = 255.255.255.192 = 0.0.0.63
+
+!
+access-list 2 permit 10.10.34.0 0.0.0.127
+or
+access-list 2 permit any
+!
+!
+ip nat inside source list 2 interface fa0/1 overload
+!
+int fa0/0
+ip nat inside
+exit
+!
+int fa0/1
+ip nat outside
+exit
+!
+!
+
+@ EDGEROUTER Configure Dynamic NAT with Overloading: 
+  Use 200.200.200.16-20 for Other Private IP Addresses
+------------------------------------------------------
+
+!
+access-list 8 permit 10.0.0.0 0.255.255.255	// all private class A
+access-list 8 permit 172.16.0.0 0.15.255.255	// all private class B
+access-list 8 permit 192.168.0.0 0.0.255.255	// all private class C
+or
+
+access-list 8 permit any
+!
+ip nat pool 16to20 200.200.200.16 200.200.200.20 netmask 255.255.255.0
+!
+ip nat inside source list 8 pool 16to20 overload
+!
+int fa0/0
+ip nat inside
+exit
+!
+int fa0/1
+ip nat outside
+exit
+!
+
+@ EDGEROUTER Configur Port-Forwarding  WEB App port 80 to 8001:
+---------------------------------------------------------------
+
+no ip nat inside source static 192.168.4.11 200.200.200.13
+!
+ip nat inside source static tcp 192.168.4.11 80 200.200.200.13 8001
+!
+!
+!
+ip nat inside source static tcp 192.168.1.4 23 200.200.200.14 2323
+
+
+----------------------------------------------------------------------------------------
+Implementing DHCP
+----------------------------------------------------------------------------------------
+
+SCENARIO1:  Local DHCP Server;  GATEWAY2 DHCP Server for VLAN 500 (Guest)
+VLAN 500 = 10.10.32.0/23
+
+!
+ip dhcp pool IP4V500
+network 10.10.32.0 255.255.254.0
+default-router 10.10.32.1
+dns-server 8.8.8.8
+exit
+!
+ip dhcp excluded-address 10.10.32.1 10.10.32.100
+ip dhcp excluded-address 10.10.32.151 10.10.32.253
+ip dhcp excluded-address 10.10.33.254
+!
+
+
+SCENARIO2:  Remote DHCP Server(Private Server) ;  
+GATEWAY1 DHCP Relay Agent for VLAN 10
+VLAN 10 = 10.10.34.0/25
+
+STEP1:  configure DHCP Server (Private SERVER)
+
+STEP2:  Configure DHCP Relay Agent on GATEWAY1
+
+int gig0/2.10
+ip helper-address 192.168.3.11
+
+
+
+
+
+
+----------------------------------------------------------------------------------------
+Spanning Tree Protocol (STP)
+----------------------------------------------------------------------------------------
+
+*  Implementing Rapid PVST+
+
+!--&gt;  configure on all Switches
+!
+spanning-tree mode rapid-pvst
+
+
+* Re-assign Root Bridges:
+
+SW1 is Root Bridge for VLAN 1 &amp; 500
+SW1 is Backup Root Bridge for VLAN 10 &amp; 20
+
+	Method 1:
+
+spanning-tree vlan 1,500 root primary
+spanning-tree vlan 10,20 root secondary
+
+
+	
+SW2 is Root Bridge for VLAN 10 &amp; 20
+SW2 is Backup Root Bridge for VLAN 1 &amp; 500
+
+	Method 2:
+
+spanning-tree vlan 10,20 priority 24576
+spanning-tree vlan 1,500 priority 28672
+
+
+* Implementing Portfast and BPDU guard in Access POrts
+------------------------------------------------------
+
+Try in  SW3:
+-------------
+int range fa0/8-9
+switchport mode access
+spanning-tree portfast
+spanning-tree bpduguard enable
+
+
+----------------------------------------------------------------------------------------
+Implementing HSRP
+----------------------------------------------------------------------------------------
+
+GATEWAY1:  	Active router for V1, V500
+		Standby router for V10, V20
+
+!
+int gig0/2.500
+standby version 2
+standby 500 ip 10.10.32.3
+standby 500 priority 150
+standby 500 preempt
+!
+int gig0/2.10
+standby version 2
+standby 10 ip 10.10.34.3
+!
+int gig0/2.20
+standby version 2
+standby 20 ip 10.10.34.131
+!
+
+GATEWAY2:  	Active router for V10, V20
+		Standby router for V1, V500
+
+
+!
+int gig0/2.500
+standby version 2
+standby 500 ip 10.10.32.3
+!
+int gig0/2.10
+standby version 2
+standby 10 ip 10.10.34.3
+standby 10 priority 110
+standby 10 preempt
+!
+int gig0/2.20
+standby version 2
+standby 20 ip 10.10.34.131
+standby 20 priority 120
+standby 20 preempt
+!
+
+
+Modify ACL applied on VLAN 500 @ GATEWAY1:
+------------------------------------------
+
+no ip access-list extended GUESTRULES
+!
+ip access-list extended GUESTRULES
+ permit ip host 10.10.32.2 host 10.10.32.1
+ deny ip 10.10.32.0 0.0.1.255 10.0.0.0 0.255.255.255
+ deny ip 10.10.32.0 0.0.1.255 172.16.0.0 0.15.255.255
+ deny ip 10.10.32.0 0.0.1.255 192.168.0.0 0.0.255.255
+ permit tcp 10.10.32.0 0.0.1.255 any eq www
+ permit tcp 10.10.32.0 0.0.1.255 any eq 443
+ permit udp 10.10.32.0 0.0.1.255 any eq domain
+
+
+Modify Default Gateway for VLAN 500 @ GATEWAY2:
+-----------------------------------------------
+
+no ip dhcp pool IP4V500
+!
+ip dhcp pool IP4V500
+network 10.10.32.0 255.255.254.0
+default-router 10.10.32.3
+dns-server 8.8.8.8
+exit
+
+
+
+
+
+
+
+----------------------------------------------------------------------------------------
+Implementing ETherchannel
+----------------------------------------------------------------------------------------
+
+Aggregate Fa0/21-22  (do it manually): Do this for both SW1 &amp; SW2
+
+!
+int range fa0/21-22
+channel-group 1 mode on
+exit
+!
+interface port-channel 1
+switchport mode trunk
+exit
+!
+!
+!
+!
+show etherchannel summary
+!
+show etherchannel
+
+Aggregate Fa0/1-2  (do it with PAgP): Do this for both SW1 &amp; SW3
+----------------------------------------------------------------
+
+!--&gt; SW1 Config
+!
+int range fa0/1-2
+channel-group 2 mode auto
+exit
+!
+interface port-channel 2
+switchport mode trunk
+exit
+!
+
+
+!--&gt; SW3 Config
+!
+int range fa0/1-2
+channel-group 2 mode desirable
+exit
+!
+interface port-channel 2
+switchport mode trunk
+exit
+!
+
+Aggregate Fa0/11-12  (do it with LACP): Do this for both SW2 &amp; SW3
+------------------------------------------------------------------
+
+!--&gt; SW2 Config
+!
+int range fa0/11-12
+channel-group 3 mode passive
+exit
+!
+interface port-channel 3
+switchport mode trunk
+exit
+!
+
+
+!--&gt; SW3 Config
+!
+int range fa0/11-12
+channel-group 3 mode active
+exit
+!
+interface port-channel 3
+switchport mode trunk
+exit
+!
+
+----------------------------------------------------------------------------------------
+Enable Evaluation License:
+--------------------------
+
+license boot module c2900 technology-package securityk9 
+
+copy run start
+
+reload
+
+
+
+Backup IOS &amp; Configuration file:
+--------------------------------
+
+copy flash: tftp:
+
+copy startup-config tftp:
+
+
+
+
+----------------------------------------------------------------------------------------
+IPv6 Addressing and Routing
+----------------------------------------------------------------------------------------
+
+-------------------------------------------------------------
+IPv6 Addressing:  Static Assignment			-----
+-------------------------------------------------------------
+
+@ Router0
+---------
+
+!
+!
+ipv6 unicast-routing
+!
+!--&gt;  Manually administer Interface-ID
+!
+int fa0/0
+ipv6 address 2001:db8:acad:1:0:0:0:1/64
+ipv6 address 2001:db8:acad:1::1/64
+no shutdown
+exit
+!
+!--&gt;  Dynamically generate Interface-ID with EUI-64 Process
+!
+int fa0/1
+ipv6 address 2001:db8:acad:2::/64 eui-64
+no shutdown
+exit
+!
+
+@ Router1
+---------
+
+!--&gt;  Assign IPv6 Address using  Manually Assigned Interface-ID
+!
+hostname Router1
+!
+int fa0/1
+ipv6 address 2001:db8:acad:2:ffff:ffff:ffff:ffff/64 eui-64
+no shutdown
+exit
+!
+!
+!
+!
+!
+ipv6 unicast-routing
+!
+int fa0/0
+ipv6 address 2001:db8:acad:3::1/64
+no shutdown
+exit
+!
+!
+!
+int e0/0/0
+ipv6 add 2001:db8:acad:4::1/64
+no shutdown
+exit
+!
+
+
+
+---------------------------------------------------------------
+IPv6 Routing						-------
+---------------------------------------------------------------
+
+* IPv6 Address for Router1 &amp; ISP:
+---------------------------------
+
+
+@ ISP:
+------
+
+
+ipv6 unicast-routing
+!
+!
+int fa0/0
+ipv6 address 2001:db8:acad:4::10/64
+no shutdown
+exit
+!
+int lo1
+ipv6 address 2001:db8:a:1::1/128
+no shutdown
+exit
+!
+int lo2
+ipv6 address 2001:db8:a:2::1/128
+no shutdown
+exit
+!
+int lo3
+ipv6 address 2001:db8:a:3::1/128
+no shutdown
+exit
+!
+int lo4
+ipv6 address 2001:db8:a:4::1/128
+no shutdown
+exit
+!
+int lo5
+ipv6 address 2001:db8:a:5::1/128
+no shutdown
+exit
+!
+
+
+
+* Static Routing:
+-----------------
++ Create a Summary Static Route for 2001:db8:a::/61 located @ the ISP
+
+
+@ Router1 Configure Summary Static Route:
+-------
+
+!
+
+ipv6 route 2001:db8:a::/61 e0/0/0 2001:db8:acad:4::10
+!
+!
+show ipv6 route static
+!
+
+
+@ Router1 Configure Default Route 0:0:0:0:0:0:0:0/0 = ::/0 (catch any route)
+--------
+
+no ipv6 route 2001:db8:a::/61 e0/0/0 2001:db8:acad:4::10
+!
+!
+ipv6 route ::/0 e0/0/0 2001:db8:acad:4::10
+!
+!
+show ipv6 route static
+!
+
+Create Static Routes @ ISP:
+---------------------------
+
+specific routes
+
+ipv6 route 2001:db8:acad:1::/64 fa0/0 2001:db8:acad:4::1
+!
+ipv6 route 2001:db8:acad:2::/64 fa0/0 2001:db8:acad:4::1
+!
+ipv6 route 2001:db8:acad:3::/64 fa0/0 2001:db8:acad:4::1
+!
+
+or using summary routes
+
+ipv6 route 2001:db8:acad::/62 fa0/0 2001:db8:acad:4::1
+!
+
+
+
+
+------------------------------------------------------
+Enable RIPng on Router0 &amp; Router1:		------
+------------------------------------------------------
+
+@ Router0 &amp; Router1 Config:
+---------------------------
+
+!
+int fa0/0
+ipv6 rip RIP-NET enable
+exit
+!
+int fa0/1
+ipv6 rip RIP-NET enable
+exit
+!
+!
+!
+
+@ Router1 Config to Advertise Static and Default Routes
+
+!
+ipv6 router rip RIP-NET
+redistribute static
+exit
+!
+
+
+------------------------------------------------------
+Enable OSPFv3 on Router0 &amp; Router1:		------
+------------------------------------------------------
+
+@ Router0 Config:
+-----------------
+
+!
+ipv6 router ospf 100
+router-id 1.1.0.0
+exit
+!
+int fa0/0
+ipv6 ospf 100 area 0
+exit
+!
+int fa0/1
+ipv6 ospf 100 area 0
+exit
+!
+
+@ Router1 Config:
+-----------------
+
+!
+ipv6 router ospf 100
+router-id 1.1.1.1
+exit
+!
+int fa0/0
+ipv6 ospf 100 area 0
+exit
+!
+int fa0/1
+ipv6 ospf 100 area 0
+exit
+!
+
+@ Router1 Config to Advertise Static and Default Routes
+
+!
+ipv6 router ospf 100
+default-information originate
+redistribute static
+exit
+!
+
+------------------------------------------------------
+Enable EIGRP for IPv6 on Router0 &amp; Router1:	------
+------------------------------------------------------
+
+@ Router0 Config:
+-----------------
+
+!
+ipv6 router eigrp 100
+eigrp router-id 1.1.0.0
+no shutdown
+exit
+!
+int fa0/0
+ipv6 eigrp 100
+exit
+!
+int fa0/1
+ipv6 eigrp 100
+exit
+!
+
+@ Router1 Config:
+-----------------
+
+!
+ipv6 router eigrp 100
+eigrp router-id 1.1.1.1
+no shutdown
+exit
+!
+int fa0/0
+ipv6 eigrp 100
+exit
+!
+int fa0/1
+ipv6 eigrp 100
+exit
+!
+
+@ Router1 Config to Advertise Static and Default Routes
+
+!
+ipv6 router eigrp 100
+redistribute static
+exit
+!
+
+
+
+
+IPv6 ACL
+--------
++ Extended ACL - NO Standard
++ Named ACL - NO numbered ACL
+
+SCENARIO:  Block only PC0 access to WEB @ Server0
+           All other traffic is allowed
+
+STEP1: Create an ACL near the Destination (Server0 2001:db8:acad:3::ffff/64)
+					Source PC0 (2001:DB8:ACAD:1::2/64)
+					Protocol, TCP port 80
+
+
+!--&gt;  Step1:  Create ACL
+!
+ipv6 access-list BLKPC0
+deny tcp host 2001:DB8:ACAD:1::2 host 2001:db8:acad:3::ffff eq 80
+permit ipv6 any any
+!
+!--&gt;  Step2:  Apply ACL
+!
+int fa0/0
+ipv6 traffic-filter BLKPC0 out
+exit
+!
+
+
+--------------------------------------------------------------------------------------
+Implementing STATELESS DHCPv6 Server
+--------------------------------------------------------------------------------------
+
+@ Router0 configure as Stateless DHCPv6 Server
+----------------------------------------------
+
+!
+ipv6 dhcp pool STATELESS-DHCPv6
+dns-server 2001:4860:4860::8888
+domain-name itcdomain.local
+exit
+!
+int fa0/0
+ipv6 dhcp server STATELESS-DHCPv6
+ipv6 nd other-config-flag
+exit
+!
+
+Note:  Google IPv6 Public DNS Server:  
+	2001:4860:4860::8888 and/or 2001:4860:4860::8844
+
+
+Configure Router to generate IP address via SLAAC:
+--------------------------------------------------
+
+!
+int fa0/0
+no shutdown
+!
+ipv6 enable
+ipv6 address autoconfig
+
+!
+
+
+
+
+
+
+
+
+---------------------------------------------------------------------------------------
+LAN Security
+---------------------------------------------------------------------------------------
+
+@ SW1 configure Port Security:
+------------------------------
+
+
+int fa0/23
+switchport mode access
+switchport access vlan 10
+switchport port-security
+switchport port-security maximum 2
+switchport port-security mac-address sticky
+switchport port-security violation restrict
+
+
+show port-security
+show port-security int fa0/23
+show port-security address
+
+
+@ SW3 configure DHCP Snooping
+-----------------------------
+
+!
+ip dhcp snooping
+ip dhcp snooping vlan 10,20,500
+!
+int range fa0/1-2
+ip dhcp snooping trust 
+exit
+!
+int range fa0/11-12
+ip dhcp snooping trust 
+exit
+!
+
+-------------------------
+
+!
+ip dhcp snooping
+ip dhcp snooping vlan 20
+!
+int range fa0/1-2
+ip dhcp snooping trust 
+exit
+!
+int range fa0/11-12
+ip dhcp snooping trust 
+exit
+!
+
+Disable CDP on clients Ports:
+-----------------------------
+!
+!--&gt; @ SW2 Config, disable CDP
+!
+!
+int range fa0/3,fa0/17-19
+no cdp enable
+exit
+!
+
+Configure SSH on Router &amp; Switches:
+-----------------------------------
+
+!
+hostname GATEWAY1
+ip domain-name itcdomain.local
+ip ssh version 2
+crypto key generate rsa
+!
+username admin password adminpass
+!
+line vty 0 15
+login local
+transport input ssh
+exit
+!
+
+Configure Native VLAN 10; Allowed vlan 1,10,20,500
+--------------------------------------------------
+
+!--&gt; SW1
+!
+int range fa0/1-2,fa0/21-22
+switchport trunk native vlan 20
+switchport trunk allowed vlan 1,10,20,500
+!
+!
+!--&gt; SW2
+!
+int range fa0/11-12,fa0/21-22
+switchport trunk native vlan 20
+switchport trunk allowed vlan 1,10,20,500
+!
+!
+!--&gt; SW3
+!
+int range fa0/1-2,fa0/11-12
+switchport trunk native vlan 20
+switchport trunk allowed vlan 1,10,20,500
+!
+!
+
+
+
+--------------------------------------------------------------------------------------
+Configure NTP 									------
+--------------------------------------------------------------------------------------
+
+@ CORE-ROUTER/GATEWAY1/GATEWAY2/EDGEROUTER/VNSERVER/REMOTE-DCR1/REMOTE-DCR2 
+as NTP Client
+---------------------------------------------------------------------------
+
+!
+ntp server 192.168.4.11
+!
+!
+show ntp status
+!
+
+
+--------------------------------------------------------------------------------------
+Configure eBGP Peering								------
+--------------------------------------------------------------------------------------
+
+@ BRANCHR1 Router Config:
+-------------------------
+
+hostname BRANCHR1
+!
+int fa0/0
+ip address 200.200.201.11 255.255.255.0
+no shutdown
+exit
+!
+int fa0/1
+ip address 172.17.2.1 255.255.255.0
+no shutdown
+exit
+!
+!
+router bgp 65410
+neighbor 200.200.201.1 remote-as 64510
+exit
+!
+!
+!
+!
+show ip bgp summary
+!
+show ip route
+
+
+
+@ PLDT Router Config:
+-------------------------
+
+hostname PLDT-ISP
+!
+router bgp 64510
+neighbor 200.200.201.11 remote-as 65410
+network 200.200.200.0 mask 255.255.255.0
+exit
+!
+!
+show ip bgp summary
+!
+show ip bgp
+!
+show ip route
+!
+
+
+
+
+
+
+----------------------------------------------------------------------------------------
+WAN CONNECTIONS:
+----------------
+
+@ Remote-DCR2 Config for PPP Enacapsulation:
+--------------------------------------------
+
+hostname REMOTE-DCR2
+!
+int s0/0/0
+encapsulation ppp
+no shutdown
+exit
+!
+int s0/0/1
+encapsulation ppp
+no shutdown
+exit
+!
+
+@ Remote-DCR1 Config for PPP Enacapsulation:
+--------------------------------------------
+
+hostname REMOTE-DCR1
+!
+int s0/0/0
+encapsulation ppp
+no shutdown
+exit
+!
+int s0/0/1
+encapsulation ppp
+no shutdown
+exit
+!
+
+
+@ Remote-DCR1 &amp; Remote-DCR2 Config for PPP PAP Authentication @ s0/0/1:
+-----------------------------------------------------------------------
+
+!
+username dcr1 password dcr1pass
+!
+hostname REMOTE-DCR2
+!
+int s0/0/1
+ppp authentication pap
+ppp pap sent-username dcr2 password dcr2pass
+no shutdown
+exit
+!
+
+---------------------------------------------------
+
+!
+username dcr2 password dcr2pass
+!
+hostname REMOTE-DCR1
+!
+int s0/0/1
+ppp authentication pap
+ppp pap sent-username dcr1 password dcr1pass
+no shutdown
+exit
+!
+
+
+@ Remote-DCR1 &amp; Remote-DCR2 Config for PPP CHAP Authentication @ s0/0/0:
+-----------------------------------------------------------------------
+
+!
+username REMOTE-DCR1 password pa$$w0rd
+!
+hostname REMOTE-DCR2
+!
+int s0/0/0
+ppp authentication chap
+no shutdown
+exit
+!
+
+---------------------------------------------------
+
+!
+username REMOTE-DCR2 password pa$$w0rd
+!
+hostname REMOTE-DCR1
+!
+int s0/0/0
+ppp authentication chap
+no shutdown
+exit
+!
+
+
+-------------------------------------------------------------------------
+Implementing GRE
+-------------------------------------------------------------------------
+
+@ BRANCHR1 and VPNSERVER Basic config for GRE:
+----------------------------------------------
+
+
+!--&gt;  VPNSERVER (REMOTE-DCR1)
+!
+int fa0/1
+ip address 200.200.200.12 255.255.255.0
+no shutdown
+exit
+!
+ip route 0.0.0.0 0.0.0.0 fa0/1
+!
+!
+int tunnel 0
+tunnel mode gre ip
+ip address 172.17.1.1 255.255.255.252
+tunnel source fa0/1
+tunnel destination 200.200.201.11
+exit
+!
+!
+!
+show ip route
+!
+show ip int brief
+
+
+!--&gt;  BRANCHR1
+!
+int tunnel 0
+tunnel mode gre ip
+ip address 172.17.1.2 255.255.255.252
+tunnel source fa0/0
+tunnel destination 200.200.200.12
+exit
+!
+
+
+
+@ BRANCHR1 and VPNSERVER Basic config for Dynamic Routing:
+----------------------------------------------------------
+
+!--&gt;  VPNSERVER
+!
+router eigrp 100
+network 192.168.100.0
+no auto-summary
+!
+!
+router rip
+version 2
+network 192.168.100.0
+no auto-summary
+!
+!
+ip route 172.17.2.0 255.255.255.0 tunnel0
+or
+ip route 172.17.2.0 255.255.255.0 172.17.1.2
+!
+
+
+
+
+!--&gt;  BRANCHR1
+!
+!
+router eigrp 100
+network 192.168.100.0
+network 172.17.0.0
+no auto-summary
+!
+!
+!
+router rip
+version 2
+network 192.168.100.0
+network 172.17.0.0
+no auto-summary
+!
+!
+
+
+ip route 172.16.0.0 255.255.0.0 tunnel0
+ip route 192.168.0.0 255.255.0.0 tunnel0
+ip route 10.10.0.0 255.255.0.0 tunnel0
+
+or
+
+ip route 192.168.0.0 255.255.0.0 172.17.1.1
+ip route 172.16.0.0 255.255.0.0 172.17.1.1
+ip route 10.10.0.0 255.255.0.0 172.17.1.1
+!
+
+-------------------------------------------------------------------------
+
+Syslog Clients:
+--------------
+
+!--&gt;  Configure Syslog clients (COREROUTER;REMOTE-DCR2)
+!
+!
+ntp server 192.168.3.11
+!
+!
+!
+logging 192.168.3.11
+!
+logging trap debugging
+!
+service timestamps log datetime msec
+!
+
+
+
+SNMP Clients:
+------------
+
+!
+!--&gt;  Configure Syslog clients (COREROUTER;REMOTE-DCR2)
+!
+!
+snmp-server community 123passro ro
+!
+snmp-server community 123passrw rw
+!
+
+
+
+Managing IOS and Configuration:
+-------------------------------
+
+
+!
+show flash:
+!
+copy flash: tftp:
+!
+!
+!
+copy startup-config tftp:
+!--&gt; or
+copy running-config tftp:
+!
+
+
+password for pdf: itc training</pre></body></html>
