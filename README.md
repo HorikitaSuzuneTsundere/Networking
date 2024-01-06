@@ -16,12 +16,10 @@ During my college years, we focused on computer networks and data communication.
 
 ## Projects
 
-### Project 1.1: Basic Switch Configuration
+### Project 1: Basic Switch Configuration
 
 This activity guides participants in creating a basic network using Ethernet LAN cabling. They'll connect to a Cisco switch via console and remote access, configure essential settings, and verify connectivity with one switch and two hosts using Ethernet and console ports.
 
 ![image](https://github.com/HorikitaSuzuneTsundere/Networking/assets/80136683/007e2203-5373-4cee-9584-56e5e2d86587)
 
-[Click Here!](https://github.com/HorikitaSuzuneTsundere/Networking/blob/f828bcaa63f093f9ed70a0d21b7872fbd7702331/activity%201/Earl%20John%20Masaga_Activity%20%231_%20Basic%20Switch%20Configuration%20Part%201.pdf)
-
-### Project 1.2: Basic Switch Configuration
+[Networking/activity 1/](https://github.com/HorikitaSuzuneTsundere/Networking/blob/f828bcaa63f093f9ed70a0d21b7872fbd7702331/activity%201/Earl%20John%20Masaga_Activity%20%231_%20Basic%20Switch%20Configuration%20Part%201.pdf)
