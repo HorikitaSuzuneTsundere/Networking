@@ -55,3 +55,13 @@ In this final activity, participants will execute all switch and router configur
 ![image](https://github.com/HorikitaSuzuneTsundere/Networking/assets/80136683/b526d329-a8b2-4923-94df-d45cb796d09a)
 
 ## Appendix
+
+[Networking/appendix/](https://github.com/HorikitaSuzuneTsundere/Networking/tree/8a88657d6aefadca7299b9d60a4a7e5c90622189/appendix)
+
+- IP telephony basic configuration
+
+![image](https://github.com/HorikitaSuzuneTsundere/Networking/assets/80136683/bb60e307-a609-4670-8066-9d0ae1bf6e82)
+
+- Network configuration from scratch
+
+![image](https://github.com/HorikitaSuzuneTsundere/Networking/assets/80136683/1404c3cf-d829-4ee5-b2fd-7b7963f79577)
